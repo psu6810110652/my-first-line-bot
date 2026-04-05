@@ -1,22 +1,28 @@
 import requests
 
-def send_discord_message(msg):
-    # วาง Webhook URL ที่ก๊อปมาในเครื่องหมายคำพูดด้านล่าง
-    webhook_url = 'https://discord.com/api/webhooks/1490365197335007425/ywp1n0MkO6Bc2rIDnxSUiAaNOrHtKhABUDvD60IO3EhdgIKyNNS5fvPxRetfLYQCp1v3'
+def ดึงอากาศแบบละเอียด():
+    api_key = "bbd8caa9d8154d4ddbe8251ac7985e27"
+    city = "Songkhla"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=th"
     
-    # ข้อมูลที่จะส่ง (Discord รับค่าเป็น Dictionary ที่มี Key ชื่อ 'content')
-    data = {
-        "content": msg,
-        "username": "My Python Bot" # ตั้งชื่อบอทที่จะโชว์ในห้องแชท
-    }
+    response = requests.get(url)
+    data = response.json()
     
-    # ส่งข้อมูลแบบ POST
-    response = requests.post(webhook_url, json=data)
+    # --- เพิ่มส่วนนี้เพื่อเช็ก Error ---
+    if response.status_code != 200:
+        return f"❌ เกิดข้อผิดพลาดจาก API: {data.get('message', 'ไม่ทราบสาเหตุ')}"
+    # ------------------------------
     
-    if response.status_code == 204: # Discord ส่งสำเร็จจะคืนค่า 204
-        print("ส่งเข้า Discord สำเร็จ!")
-    else:
-        print(f"พังจ้า! Error Code: {response.status_code}")
+    สภาพอากาศ = data['weather'][0]['description']
+    อุณหภูมิ = data['main']['temp']
+    
+    return f"📍 {city}: {สภาพอากาศ}, อุณหภูมิ {อุณหภูมิ}°C"
 
-# ลองใช้งาน
-send_discord_message("เย้! บอทตัวแรกใน Discord ของผมทำงานได้แล้ว")
+def ส่งไปDiscord(ข้อความ):
+    webhook_url = 'https://discord.com/api/webhooks/1490365197335007425/ywp1n0MkO6Bc2rIDnxSUiAaNOrHtKhABUDvD60IO3EhdgIKyNNS5fvPxRetfLYQCp1v3'
+    requests.post(webhook_url, json={"content": ข้อความ})
+
+if __name__ == "__main__":
+    ผลลัพธ์ = ดึงอากาศแบบละเอียด()
+    print(ผลลัพธ์) # ปริ้นดูใน Terminal ก่อน
+    ส่งไปDiscord(ผลลัพธ์)
