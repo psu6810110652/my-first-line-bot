@@ -1,25 +1,32 @@
-# my-first-line-
-# Hatyai Weather Discord Bot
+# 🌤️ Hatyai Weather Discord Bot (Cloud Edition)
 
-โปรเจคบอทรายงานสภาพอากาศอัตโนมัติสำหรับเมืองหาดใหญ่ (หรือจังหวัดอื่นๆ) ส่งข้อมูลเข้า Discord ผ่าน Webhook โดยใช้ภาษา Python 
-เป็นโปรเจคเริ่มต้นเพื่อฝึกทักษะการใช้งาน API, การจัดการความปลอดภัยด้วย Environment Variables และการใช้งาน Git/GitHub
+โปรเจคบอทรายงานสภาพอากาศอัตโนมัติสำหรับเมืองหาดใหญ่ ส่งข้อมูลเข้า Discord ในรูปแบบ Embed ที่สวยงาม โดยทำงานอัตโนมัติ 24/7 บนระบบ Cloud
 
-## คุณสมบัติ (Features)
-- ดึงข้อมูลพยากรณ์อากาศแบบ Real-time จาก **OpenWeatherMap API**
-- รายงานข้อมูล: อุณหภูมิ (°C), สภาพอากาศ (เช่น เมฆมาก, ฝนตก), และความชื้น
-- ส่งการแจ้งเตือนเข้าช่องแชท **Discord** ทันทีด้วย Webhook
-- รองรับการตั้งค่าความปลอดภัยผ่านไฟล์ `.env` (Best Practice)
+## 🚀 คุณสมบัติ (Features)
+- **Real-time Data:** ดึงข้อมูลสภาพอากาศแม่นยำจาก OpenWeatherMap API
+- **Rich Visuals:** ส่งข้อความรูปแบบ **Discord Embeds** พร้อมแถบสีตามอุณหภูมิและไอคอนสภาพอากาศ
+- **Automation:** ตั้งเวลาส่งรายงานอัตโนมัติทุกเช้าและเย็นด้วย Library `schedule`
+- **Cloud Deployment:** รันโปรแกรมบน **PythonAnywhere** ทำให้ทำงานได้ตลอด 24 ชั่วโมงโดยไม่ต้องเปิดคอมพิวเตอร์ทิ้งไว้
+- **Security:** จัดการความลับ (API Key/Webhook) ผ่านไฟล์ `.env` อย่างปลอดภัย
 
-## เทคโนโลยีที่ใช้ (Tech Stack)
-- **Language:** Python 3.x
-- **Libraries:** - `requests` (สำหรับดึงข้อมูล API)
-  - `python-dotenv` (สำหรับจัดการค่า Config และความลับ)
-- **API:** [OpenWeatherMap](https://openweathermap.org/)
-- **Tools:** Git, GitHub, VS Code
+## 🛠️ เทคโนโลยีที่ใช้ (Tech Stack)
+- **Language:** Python 3.10+
+- **Libraries:** `requests`, `python-dotenv`, `schedule`
+- **Infrastructure:** PythonAnywhere (Cloud Hosting)
+- **API:** OpenWeatherMap API
 
-## การติดตั้งและใช้งาน (Installation)
+## 🏗️ โครงสร้างระบบ (System Architecture)
 
-1. **Clone Repository**
+
+
+1. **Trigger:** ระบบ Schedule ตรวจพบว่าถึงเวลาที่กำหนด (เช่น 07:00 น.)
+2. **Data Fetch:** Python ส่งคำขอไปยัง OpenWeather API เพื่อรับข้อมูล JSON
+3. **Processing:** ระบบคำนวณสี Embed และจัดรูปแบบข้อความภาษาไทย
+4. **Notification:** ส่งข้อมูลไปยัง Discord Webhook เพื่อแสดงผลใน Channel
+
+## 📦 การติดตั้งและใช้งาน (Local Setup)
+
+1. **Clone & Install:**
    ```bash
-   git clone https://github.com/psu6810110652/my-first-line-bot.git
-   cd my-first-line-bot
+   git clone [https://github.com/ช](https://github.com/ช)ื่อยูสเซอร์ของคุณ/my-first-line-bot.git
+   pip install requests python-dotenv schedule
