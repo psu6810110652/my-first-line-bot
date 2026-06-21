@@ -2,13 +2,12 @@ import os
 import requests
 import time
 
-# ดึงค่าจาก Environment Variables บน Render
+# ดึงค่าจาก Environment บน Render (ที่เราแก้ไปล่าสุด)
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 WEATHER_KEY = os.getenv("OPENWEATHER_KEY")
 
-
 def get_weather():
-    # เปลี่ยนชื่อเมืองตามต้องการ เช่น hatyai
+    # ดึงสภาพอากาศเมืองหาดใหญ่
     url = f"https://api.openweathermap.org/data/2.5/weather?q=hatyai&appid={WEATHER_KEY}&units=metric&lang=th"
     response = requests.get(url).json()
     if response.get("cod") == 200:
@@ -17,18 +16,17 @@ def get_weather():
         return f"📊 **รายงานสภาพอากาศ หาดใหญ่**\n🌡️ อุณหภูมิ: {temp}°C\n☁️ สภาพอากาศ: {description}"
     return "❌ ไม่สามารถดึงข้อมูลสภาพอากาศได้"
 
-
 def send_to_discord():
     message = get_weather()
     payload = {"content": message}
+    # ส่งข้อมูลตรงเข้า Discord ผ่านลิงก์ Webhook
     requests.post(WEBHOOK_URL, json=payload)
-    print("✅ ส่งข้อมูลเข้า Discord เรียบร้อยแล้ว!")
-
+    print("✅ ส่งข้อมูลสภาพอากาศเข้า Discord เรียบร้อยแล้ว!")
 
 if __name__ == "__main__":
-    # สั่งให้ทำงานส่งข้อมูลทันทีเมื่อเปิดเครื่อง บน Render Web Service
+    # ทำงานทันทีเมื่อเปิดเครื่องบน Render
     send_to_discord()
 
-    # ลูปทิ้งไว้ไม่ให้ Web Service ดับอัตโนมัติ
+    # ลูปเปิดเครื่องทิ้งไว้ไม่ให้ Render ดับชั่วคราว
     while True:
-        time.sleep(3600)  # ทำงานซ้ำทุกๆ 1 ชั่วโมง
+        time.sleep(3600)  # ส่งซ้ำทุกๆ 1 ชั่วโมง
