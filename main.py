@@ -29,7 +29,7 @@ WEATHER_KEY = os.getenv("OPENWEATHER_KEY")
 
 def get_weather():
     # ส่งคำขอไปที่ OpenWeather API (เลือกเมืองหาดใหญ่)
-    url = f"https://api.openweathermap.org/data/2.5/weather?q=hatyai&appid={WEATHER_KEY}&units=metric&lang=th"
+    url = f"https://api.openweathermap.org/data/2.5/weather?lat=7.0084&lon=100.4747&appid={WEATHER_KEY}&units=metric&lang=th"
     
     try:
         response = requests.get(url).json()
