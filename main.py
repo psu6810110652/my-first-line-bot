@@ -1,13 +1,28 @@
 import os
 import requests
 import time
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# ดึงค่าจาก Environment บน Render (ที่เราแก้ไปล่าสุด)
+# 1. ระบบเปิด Port หลอกเพื่อให้ Render ผ่านด่าน (Port Binding)
+class SimpleServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"Bot is running!")
+
+def run_web_server():
+    port = int(os.getenv("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), SimpleServer)
+    print(f"🌍 Web Server Started on port {port}")
+    server.serve_forever()
+
+# 2. ฟังก์ชันบอทส่งสภาพอากาศเดิมของคุณ
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 WEATHER_KEY = os.getenv("OPENWEATHER_KEY")
 
 def get_weather():
-    # ดึงสภาพอากาศเมืองหาดใหญ่
     url = f"https://api.openweathermap.org/data/2.5/weather?q=hatyai&appid={WEATHER_KEY}&units=metric&lang=th"
     response = requests.get(url).json()
     if response.get("cod") == 200:
@@ -19,14 +34,16 @@ def get_weather():
 def send_to_discord():
     message = get_weather()
     payload = {"content": message}
-    # ส่งข้อมูลตรงเข้า Discord ผ่านลิงก์ Webhook
     requests.post(WEBHOOK_URL, json=payload)
     print("✅ ส่งข้อมูลสภาพอากาศเข้า Discord เรียบร้อยแล้ว!")
 
 if __name__ == "__main__":
-    # ทำงานทันทีเมื่อเปิดเครื่องบน Render
+    # สั่งรัน Web Server หลอกแยกเป็นอีกโปรเซสหนึ่ง
+    threading.Thread(target=run_web_server, daemon=True).start()
+    
+    # ส่งข้อความเข้า Discord ทันที
     send_to_discord()
 
-    # ลูปเปิดเครื่องทิ้งไว้ไม่ให้ Render ดับชั่วคราว
+    # ลูปทำงานทุกๆ 1 ชั่วโมง
     while True:
-        time.sleep(3600)  # ส่งซ้ำทุกๆ 1 ชั่วโมง
+        time.sleep(3600)
