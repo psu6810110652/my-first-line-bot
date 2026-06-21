@@ -12,66 +12,135 @@ class SimpleServer(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "text/html; charset=utf-8")
         self.end_headers()
-        self.wfile.write(b"Bot is running successfully!")
+        self.wfile.write(b"Bot is running beautifully!")
 
 def run_web_server():
-    # ดึงพอร์ตที่ Render กำหนดมา ถ้าไม่มีจะใช้พอร์ต 10000 เป็นค่าเริ่มต้น
     port = int(os.getenv("PORT", 10000))
     server = HTTPServer(("0.0.0.0", port), SimpleServer)
-    print(f"🌍 เซิร์ฟเวอร์หลอกเปิดใช้งานแล้วที่พอร์ต: {port}")
     server.serve_forever()
 
 # =======================================================
-# 2. ฟังก์ชันหลักสำหรับดึงข้อมูลสภาพอากาศและส่งเข้า Discord
+# 2. ฟังก์ชันดึงสภาพอากาศ + ค่าฝุ่น PM 2.5 (พิกัดหาดใหญ่)
 # =======================================================
 WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK")
 WEATHER_KEY = os.getenv("OPENWEATHER_KEY")
 
-def get_weather():
-    # ส่งคำขอไปที่ OpenWeather API (เลือกเมืองหาดใหญ่)
-    url = f"https://api.openweathermap.org/data/2.5/weather?lat=7.0084&lon=100.4747&appid={WEATHER_KEY}&units=metric&lang=th"
+# พิกัดหาดใหญ่ แม่นยำ 100% ไม่เจอปัญหา City Not Found
+LAT = "7.0084"
+LON = "100.4747"
+
+def get_weather_data():
+    # ลิงก์ดึงสภาพอากาศหลัก
+    weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={LAT}&lon={LON}&appid={WEATHER_KEY}&units=metric&lang=th"
+    # ลิงก์ดึงค่ามลพิษทางอากาศ (AQI / PM2.5)
+    pollution_url = f"https://api.openweathermap.org/data/2.5/air_pollution?lat={LAT}&lon={LON}&appid={WEATHER_KEY}"
     
     try:
-        response = requests.get(url).json()
+        w_res = requests.get(weather_url).json()
+        p_res = requests.get(pollution_url).json()
         
-        # ถ้าดึงข้อมูลสำเร็จ (Status Code: 200)
-        if response.get("cod") == 200:
-            temp = response["main"]["temp"]
-            description = response["weather"][0]["description"]
-            return f"📊 **รายงานสภาพอากาศ หาดใหญ่**\n🌡️ อุณหภูมิปัจจุบัน: {temp}°C\n☁️ สภาพอากาศ: {description}"
+        if w_res.get("cod") != 200:
+            return None, f"OpenWeather Error: `{w_res.get('message')}`"
+            
+        # ดึงค่าจากสภาพอากาศ
+        temp = w_res["main"]["temp"]
+        humidity = w_res["main"]["humidity"]
+        description = w_res["weather"][0]["description"]
         
-        # กรณี OpenWeather ส่งข้อความเออเร่อกลับมา (เช่น คีย์ยังไม่พร้อมใช้)
-        error_msg = response.get("message", "Unknown Error")
-        return f"❌ ดึงข้อมูลไม่สำเร็จเนื่องจากระบบ OpenWeather แจ้งว่า: `{error_msg}` (Code: {response.get('cod')})\n💡 *คำแนะนำ: ถ้าเป็น API Key พึ่งสมัครใหม่ อาจจะต้องรอระบบเปิดใช้งาน 1-2 ชั่วโมงนะครับ*"
+        # ดึงค่าจากมลพิษทางอากาศ
+        pm25 = p_res["list"][0]["components"]["pm2_5"]
+        aqi_code = p_res["list"][0]["main"]["aqi"]
+        
+        # แปลงระดับ AQI ของ OpenWeather (1-5) ให้เป็นข้อความภาษาไทย
+        aqi_th = {
+            1: "ดีมาก 🟢",
+            2: "ดี 🟢",
+            3: "ปานกลาง 🟡",
+            4: "เริ่มมีผลกระทบต่อสุขภาพ 🟠",
+            5: "มีผลกระทบต่อสุขภาพอย่างมาก 🔴"
+        }.get(aqi_code, "ไม่สามารถระบุได้")
+        
+        # สรุปภาพรวมอากาศ
+        status_text = "วันนี้อากาศปกติครับ" if aqi_code <= 2 else "ช่วงนี้มีฝุ่นเล็กน้อยครับ" if aqi_code == 3 else "ระวังสุขภาพด้วยนะครับ"
+        
+        # จัดข้อมูลส่งกลับในรูปแบบ Dictionary เพื่อไปใส่ใน Embed
+        data = {
+            "temp": f"{temp} °C",
+            "humidity": f"{humidity}%",
+            "desc": description,
+            "pm25": f"{pm25} µg/m³",
+            "aqi": aqi_th,
+            "status": status_text
+        }
+        return data, None
         
     except Exception as e:
-        return f"❌ เกิดข้อผิดพลาดในระบบโค้ด: `{str(e)}`"
+        return None, f"โค้ดทำงานผิดพลาด: `{str(e)}`"
 
 def send_to_discord():
-    message = get_weather()
-    payload = {"content": message}
+    data, error = get_weather_data()
+    
+    # ถ้าดึงข้อมูลไม่สำเร็จ ให้ส่งข้อความแจ้งเตือนข้อผิดพลาดธรรมดา
+    if error:
+        payload = {"content": f"❌ {error}"}
+        requests.post(WEBHOOK_URL, json=payload)
+        return
+
+    # สร้างโครงสร้างกล่องข้อความ Embed สวยงามแบบในรูปเดิมเป๊ะๆ
+    payload = {
+        "embeds": [
+            {
+                "title": "📍 รายงานอากาศ & มลพิษ: จังหวัดสงขลา (หาดใหญ่)",
+                "description": f"✅ {data['status']}",
+                "color": 3447003,  # สีฟ้าสว่าง (ตรงกับแถบสีในรูป)
+                "fields": [
+                    {
+                        "name": "🌡️ อุณหภูมิ",
+                        "value": data["temp"],
+                        "inline": True
+                    },
+                    {
+                        "name": "💧 ความชื้น",
+                        "value": data["humidity"],
+                        "inline": True
+                    },
+                    {
+                        "name": "☁️ สภาพ",
+                        "value": data["desc"],
+                        "inline": True
+                    },
+                    {
+                        "name": "😷 คุณภาพอากาศ (AQI)",
+                        "value": data["aqi"],
+                        "inline": True
+                    },
+                    {
+                        "name": "🌫️ PM 2.5",
+                        "value": data["pm25"],
+                        "inline": True
+                    }
+                ],
+                "footer": {
+                    "text": f"อัปเดตล่าสุด: สแตนด์บายอัตโนมัติทุกๆ 1 ชั่วโมง"
+                }
+            }
+        ]
+    }
     
     if WEBHOOK_URL:
-        # ยิงข้อความตรงเข้า Discord Channel ผ่าน Webhook ลิงก์
         requests.post(WEBHOOK_URL, json=payload)
-        print("✅ สั่งยิงข้อความรายงานผลเข้า Discord เรียบร้อยแล้ว!")
-    else:
-        print("⚠️ ไม่สามารถส่งได้เนื่องจากหาค่า DISCORD_WEBHOOK ไม่เจอใน Environment")
+        print("✅ ส่ง Embed สภาพอากาศและมลพิษเข้า Discord สวยงามเรียบร้อย!")
 
 # =======================================================
-# 3. จุดเริ่มต้นการทำงานของโปรแกรม (Main)
+# 3. จุดเริ่มต้นการทำงาน
 # =======================================================
 if __name__ == "__main__":
-    print("🚀 บอทกำลังเริ่มทำงาน...")
-    
-    # สั่งให้ Web Server หลอกทำงานแยกเป็นเบื้องหลัง (Background Thread)
+    print("🚀 บอทกล่อง Embed สวยงามกำลังเริ่มทำงาน...")
     threading.Thread(target=run_web_server, daemon=True).start()
     
-    # สั่งให้ส่งข้อมูลสภาพอากาศเข้าดิสคอร์ดทันทีที่เปิดเครื่องครั้งแรก
+    # ส่งครั้งแรกทันทีที่เปิดเซิร์ฟเวอร์
     send_to_discord()
 
-    # สั่งให้บอทลูปทำงานซ้ำทุกๆ 1 ชั่วโมง (3600 วินาที)
-    print("⏰ บอทเข้าสู่โหมดสแตนด์บาย จะส่งข้อมูลใหม่ในอีก 1 ชั่วโมง...")
     while True:
-        time.sleep(3600)
+        time.sleep(3600)  # ส่งซ้ำอัตโนมัติทุกๆ 1 ชั่วโมง
         send_to_discord()
